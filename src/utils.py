@@ -1,6 +1,28 @@
 import numpy as np
 import scipy.sparse as sp
 import torch
+from time import time
+from functools import wraps
+
+def timing(f):
+    PROFILE_MODE = False
+    # source: https://stackoverflow.com/questions/1622943/timeit-versus-timing-decorator
+    if PROFILE_MODE:
+        @wraps(f)
+        def wrap(*args, **kw):
+            ts = time()
+            result = f(*args, **kw)
+            te = time()
+            print('func:%r took: %2.4f sec' % \
+              (f.__name__, te-ts))
+            return result
+        return wrap
+    else:
+        @wraps(f)
+        def wrap(*args, **kw):
+            result = f(*args, **kw)
+            return result
+        return wrap
 
 
 def encode_onehot(labels):
@@ -11,7 +33,7 @@ def encode_onehot(labels):
                              dtype=np.int32)
     return labels_onehot
 
-
+@timing
 def load_data(path="../data/cora/", dataset="cora"):
     """Load citation network dataset (cora only for now)"""
     print('Loading {} dataset...'.format(dataset))
