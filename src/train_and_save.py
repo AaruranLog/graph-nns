@@ -48,6 +48,19 @@ def write_results_to_file(records_filename, final_results):
             writer.writeheader()
             writer.writerow(final_results)
 
+def report_progress(i, start_time, done_training_time, done_testing_time, end_time):
+        # Print Timing
+        elapsed_time_seconds_3digits = round(end_time - start_time, 3)
+        training_time_seconds_3digits = round(done_training_time - start_time,
+                                              3)
+        testing_time_seconds_3digits = round(done_testing_time -
+                                             done_training_time, 3)
+        print(f'Trial {i+1} completed in {elapsed_time_seconds_3digits}s')
+        print(f"Training = {training_time_seconds_3digits}s")
+        print(f"Testing = {testing_time_seconds_3digits}s")
+        print(f"Writing Time = {round(end_time - done_testing_time, 3)} s")
+
+
 def run(n_trials=100):
     # Load data
     adj, features, labels, idx_train, idx_test = load_data()
@@ -80,19 +93,12 @@ def run(n_trials=100):
         done_testing_time = time.time()
 
         # Cache to file
-        # if the file exists, simply append
         records_filename = "records.csv"
         write_results_to_file(records_filename, final_results)
         end_time = time.time()
-        elapsed_time_seconds_3digits = round(end_time - start_time, 3)
-        training_time_seconds_3digits = round(done_training_time - start_time,
-                                              3)
-        testing_time_seconds_3digits = round(done_testing_time -
-                                             done_training_time, 3)
-        print(f'Trial {i+1} completed in {elapsed_time_seconds_3digits}s')
-        print(f"Training = {training_time_seconds_3digits}s")
-        print(f"Testing = {testing_time_seconds_3digits}s")
-        print(f"Writing Time = {round(end_time - done_testing_time, 3)} s")
+        report_progress(i, start_time, done_training_time,
+                          done_testing_time, end_time)
+
 
 def main():
     run()
