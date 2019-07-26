@@ -1,16 +1,16 @@
 from collections import OrderedDict
 import os
+import csv
+
 import time
-import torch
-import torch.nn as nn
 import torch.nn.functional as F
-import numpy as np
+
 import torch.optim as optim
 
 from utils import load_data, accuracy, timing
 from models import GCN
 # import pandas as pd
-import csv
+
 
 @timing
 def train(model, features, adj, idx_train, labels, optimizer):
@@ -21,7 +21,7 @@ def train(model, features, adj, idx_train, labels, optimizer):
     optimizer.zero_grad()
     output = model(features, adj)
     loss_train = F.nll_loss(output[idx_train], labels[idx_train])
-    acc_train = accuracy(output[idx_train], labels[idx_train])
+    # acc_train = accuracy(output[idx_train], labels[idx_train])
     loss_train.backward()
     optimizer.step()
 
@@ -50,7 +50,7 @@ def write_results_to_file(records_filename, final_results):
 
 def run(n_trials=100):
     # Load data
-    adj, features, labels, idx_train, idx_val, idx_test = load_data()
+    adj, features, labels, idx_train, idx_test = load_data()
 
     epochs = 200
     lr = 0.01
@@ -67,7 +67,7 @@ def run(n_trials=100):
         optimizer = optim.Adam(model.parameters(),
                                lr=lr, weight_decay=weight_decay)
         # Train model
-        for epoch in range(epochs):
+        for _ in range(epochs):
             train(model, features, adj, idx_train, labels, optimizer)
         done_training_time = time.time()
 
@@ -85,10 +85,17 @@ def run(n_trials=100):
         write_results_to_file(records_filename, final_results)
         end_time = time.time()
         elapsed_time_seconds_3digits = round(end_time - start_time, 3)
-        training_time_seconds_3digits = round(done_training_time - start_time, 3)
-        testing_time_seconds_3digits = round(done_testing_time - done_training_time, 3)
-        print(f'Trial {i+1} completed in {elapsed_time_seconds_3digits} seconds.')
-        print(f"Training = {training_time_seconds_3digits}s\nTesting = {testing_time_seconds_3digits}s.")
+        training_time_seconds_3digits = round(done_training_time - start_time,
+                                              3)
+        testing_time_seconds_3digits = round(done_testing_time -
+                                             done_training_time, 3)
+        print(f'Trial {i+1} completed in {elapsed_time_seconds_3digits}s')
+        print(f"Training = {training_time_seconds_3digits}s")
+        print(f"Testing = {testing_time_seconds_3digits}s")
         print(f"Writing Time = {round(end_time - done_testing_time, 3)} s")
 
-run()
+def main():
+    run()
+
+if __name__ == "__main__":
+    main()
