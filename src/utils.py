@@ -36,7 +36,7 @@ def encode_onehot(labels):
 @timing
 def load_data(path="../data/cora/", dataset="cora"):
     """Load citation network dataset (cora only for now)"""
-    print('Loading {} dataset...'.format(dataset))
+    # print('Loading {} dataset...'.format(dataset))
 
     idx_features_labels = np.genfromtxt("{}{}.content".format(path, dataset),
                                         dtype=np.dtype(str))
