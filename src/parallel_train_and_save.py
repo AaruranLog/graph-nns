@@ -1,22 +1,22 @@
-from collections import OrderedDict
-import os
-import csv
+"""
+Improved implementation of train_and_save.py
+"""
 import time
-# import threading # for parallelism
-# import queue # for parallelism
 from multiprocessing import Process, Queue, cpu_count
 from queue import Empty # to handle empty queues
 
-import torch.nn.functional as F
 import torch.optim as optim
-
-from utils import load_data, accuracy, timing
+from utils import load_data
 from models import GCN
-
 from train_and_save import train, test, write_results_to_file
 
 class TestAndWriteProcess(Process):
-    def __init__(self, queue, features, adj, idx_test, labels,records_to_write=50, records_filename="records.csv"):
+    """
+        Tests and Writes model to csv file based on incoming queue until specified
+        count is achieved
+    """
+    def __init__(self, queue, features, adj, idx_test, labels,
+                 records_to_write=50, records_filename="records.csv"):
         Process.__init__(self)
         self.queue = queue
         self.features = features
@@ -27,6 +27,9 @@ class TestAndWriteProcess(Process):
         self.records_to_write = records_to_write
 
     def run(self):
+        """
+            Tests and writes models from queue to file
+        """
         count = 0
         while count < self.records_to_write:
             try:
@@ -45,6 +48,10 @@ class TestAndWriteProcess(Process):
                 continue
 
 class TrainingProcess(Process):
+    """
+        Trains the exact same model architecture indefinitely,
+        on the exact same data, and feeds the models into an output queue
+    """
     def __init__(self, out_queue, features, adj, idx_train, labels):
         Process.__init__(self)
         self.out_queue = out_queue
@@ -59,6 +66,9 @@ class TrainingProcess(Process):
         self.labels = labels
 
     def train(self):
+        """
+            Trains the model based on configurations specified in __init__
+        """
         # Model and optimizer
         model = GCN(nfeat=self.features.shape[1],
                     nhid=self.hidden,
@@ -73,24 +83,27 @@ class TrainingProcess(Process):
         return model
 
     def run(self):
+        """
+            Populates output queue indefinitely
+        """
         while True:
             model = self.train()
             self.out_queue.put(model)
-            # print(f'Experiment {i+1} done')
-        # print(f'Process is done populating buffer.')
 
 def main():
+    """
+        Entry point
+    """
     start_time = time.time()
     # Load data
     adj, features, labels, idx_train, idx_test = load_data()
     buffer = Queue()
-    training_processes = []
-    n_workers = cpu_count() * 10
+    n_workers = cpu_count()
     print(f"Spawning {n_workers} TrainingProcess's")
+    training_processes = [None] * n_workers
     for i in range(n_workers):
-        t = TrainingProcess(buffer, features, adj, idx_train, labels)
-        t.start()
-        training_processes.append(t)
+        training_processes[i] = TrainingProcess(buffer, features, adj, idx_train, labels)
+        training_processes[i].start()
 
     print("Spawning TestAndWriteProcess")
     test_and_write = TestAndWriteProcess(buffer, features, adj, idx_test, labels)
@@ -99,9 +112,9 @@ def main():
 
     print("Joining on test_and_write")
     test_and_write.join()
-    for t in training_processes:
-        t.terminate()
     end_time = time.time()
+    for worker in training_processes:
+        worker.terminate()
     print("Done.")
     tasks_completed = test_and_write.records_to_write
     elapsed_time = end_time - start_time
