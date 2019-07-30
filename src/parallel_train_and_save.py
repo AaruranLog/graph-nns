@@ -1,5 +1,5 @@
 """
-Improved implementation of train_and_save.py
+Parallel implementation of train_and_save.py
 """
 import time
 from multiprocessing import Process, Queue, cpu_count
@@ -16,7 +16,7 @@ class TestAndWriteProcess(Process):
         count is achieved
     """
     def __init__(self, queue, features, adj, idx_test, labels,
-                 records_to_write=50, records_filename="records.csv"):
+                 records_to_write=2000, records_filename="records.csv"):
         Process.__init__(self)
         self.queue = queue
         self.features = features
@@ -41,7 +41,6 @@ class TestAndWriteProcess(Process):
                 for k in params:
                     params[k] = params[k].reshape(-1).data.tolist()
                 final_results = {**params, **metrics}
-                # print("Model dequeued. Writing to file...")
                 write_results_to_file(self.records_filename, final_results)
                 count += 1
             except Empty:
@@ -82,13 +81,22 @@ class TrainingProcess(Process):
                   self.idx_train, self.labels, optimizer)
         return model
 
-    def run(self):
+    def train_chunk(self, chunksize=20):
+        for _ in range(chunksize):
+            yield self.train()
+
+    def run(self, chunked=True):
         """
             Populates output queue indefinitely
         """
         while True:
-            model = self.train()
-            self.out_queue.put(model)
+            if not chunked:
+                model = self.train()
+                self.out_queue.put(model)
+            else:
+                models = self.train_chunk()
+                for m in models:
+                    self.out_queue.put(m)
 
 def main():
     """
@@ -98,7 +106,7 @@ def main():
     # Load data
     adj, features, labels, idx_train, idx_test = load_data()
     buffer = Queue()
-    n_workers = cpu_count()
+    n_workers = cpu_count() - 1
     print(f"Spawning {n_workers} TrainingProcess's")
     training_processes = [None] * n_workers
     for i in range(n_workers):
@@ -107,7 +115,6 @@ def main():
 
     print("Spawning TestAndWriteProcess")
     test_and_write = TestAndWriteProcess(buffer, features, adj, idx_test, labels)
-    # test_and_write.daemon = False
     test_and_write.start()
 
     print("Joining on test_and_write")
