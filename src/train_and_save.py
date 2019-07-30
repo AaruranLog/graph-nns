@@ -35,18 +35,19 @@ def test(model, features, adj, idx_test, labels):
 
 @timing
 def write_results_to_file(records_filename, final_results):
+    mode = ""
     if os.path.exists(records_filename):
-        with open(records_filename, "a") as target:
-            fieldnames = list(final_results.keys())
-            writer = csv.DictWriter(target, fieldnames=fieldnames)
-            writer.writerow(final_results)
+        mode = "a"
     else:
-        print(f"{records_filename} has been created")
-        with open(records_filename, "w") as target:
-            fieldnames = list(final_results.keys())
-            writer = csv.DictWriter(target, fieldnames=fieldnames)
+        mode = "w"
+    # print(f"{records_filename} to be created")
+    with open(records_filename, mode) as target:
+        fieldnames = list(final_results.keys())
+        writer = csv.DictWriter(target, fieldnames=fieldnames)
+        if mode == "w":
             writer.writeheader()
-            writer.writerow(final_results)
+        writer.writerow(final_results)
+
 
 def report_progress(i, start_time, done_training_time, done_testing_time, end_time):
         # Print Timing
@@ -55,13 +56,14 @@ def report_progress(i, start_time, done_training_time, done_testing_time, end_ti
                                               3)
         testing_time_seconds_3digits = round(done_testing_time -
                                              done_training_time, 3)
-        print(f'Trial {i+1} completed in {elapsed_time_seconds_3digits}s')
-        print(f"Training = {training_time_seconds_3digits}s")
-        print(f"Testing = {testing_time_seconds_3digits}s")
-        print(f"Writing Time = {round(end_time - done_testing_time, 3)} s")
+        # print(f'Trial {i+1} completed in {elapsed_time_seconds_3digits}s')
+        # print(f"Training = {training_time_seconds_3digits}s")
+        # print(f"Testing = {testing_time_seconds_3digits}s")
+        # print(f"Writing Time = {round(end_time - done_testing_time, 3)} s")
 
 
 def run(n_trials=100):
+    start_time = time.time()
     # Load data
     adj, features, labels, idx_train, idx_test = load_data()
 
@@ -71,7 +73,7 @@ def run(n_trials=100):
     hidden = 16
     dropout = 0.5
     for i in range(n_trials):
-        start_time = time.time()
+
         # Model and optimizer
         model = GCN(nfeat=features.shape[1],
                     nhid=hidden,
@@ -95,10 +97,13 @@ def run(n_trials=100):
         # Cache to file
         records_filename = "records.csv"
         write_results_to_file(records_filename, final_results)
-        end_time = time.time()
-        report_progress(i, start_time, done_training_time,
-                          done_testing_time, end_time)
 
+        # report_progress(i, start_time, done_training_time,
+        #                   done_testing_time, end_time)
+    end_time = time.time()
+    speed = n_trials / (end_time - start_time)
+    print(f"{n_trials} tasks completed in {end_time - start_time}.")
+    print(f"{round(speed, 3)} tasks/second for non-parallel implementation.")
 
 def main():
     run()
